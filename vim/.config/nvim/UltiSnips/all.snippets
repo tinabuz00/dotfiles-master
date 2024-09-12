@@ -1,0 +1,293 @@
+priority -60
+
+global !p
+# vim:set et fileencoding=utf8 sts=0 sw=4 ts=4:
+
+"""Helper methods used in UltiSnips snippets."""
+
+import string, vim, re
+
+def _parse_comments(s):
+    """ Parses vim's comments option to extract comment format """
+    i = iter(s.split(","))
+
+    rv = []
+    try:
+        while True:
+            # get the flags and text of a comment part
+            flags, text = next(i).split(':', 1)
+
+            if len(flags) == 0:
+                rv.append(('OTHER', text, text, text, ""))
+            # parse 3-part comment, but ignore those with O flag
+            elif 's' in flags and 'O' not in flags:
+                ctriple = ["TRIPLE"]
+                indent = ""
+
+                if flags[-1] in string.digits:
+                    indent = " " * int(flags[-1])
+                ctriple.append(text)
+
+                flags, text = next(i).split(':', 1)
+                assert flags[0] == 'm'
+                ctriple.append(text)
+
+                flags, text = next(i).split(':', 1)
+                assert flags[0] == 'e'
+                ctriple.append(text)
+                ctriple.append(indent)
+
+                rv.append(ctriple)
+            elif 'b' in flags:
+                if len(text) == 1:
+                    rv.insert(0, ("SINGLE_CHAR", text, text, text, ""))
+    except StopIteration:
+        return rv
+
+def get_comment_format():
+    """ Returns a 4-element tuple (first_line, middle_lines, end_line, indent)
+    representing the comment format for the current file.
+
+    It first looks at the 'commentstring', if that ends with %s, it uses that.
+    Otherwise it parses '&comments' and prefers single character comment
+    markers if there are any.
+    """
+    commentstring = vim.eval("&commentstring")
+    if commentstring.endswith("%s"):
+        c = commentstring[:-2]
+        # return (c.rstrip(), c.rstrip(), c.rstrip(), "")
+        return (c.rstrip(), c.rstrip(), '', '')
+    comments = _parse_comments(vim.eval("&comments"))
+    for c in comments:
+        if c[0] == "SINGLE_CHAR":
+            return c[1:]
+    return comments[0][1:]
+
+
+box_types = {
+    "none": "        ",
+    "rounded": "╭─╮││╰─╯",
+    "bottomrounded": "   ╰╯   ",
+    "double": "╔═╗║║╚═╝",
+    "double_rounded": "╭═╮││╰═╯",
+    "shadow_rounded": "╭─╮││╰═╯",
+    "single": "┌─┐││└─┘",
+    "mixed_2": "╭─┐││└─╯",
+    "mixed_1": "┌─╮││╰─┘",
+}
+
+
+def make_box(
+    text_width,
+    box_type="rounded",
+    hpadding=1,
+    vpadding=0,
+    comment_padding=1,
+    min_box_width=10,
+	pad_char=" ",
+    pre_str = "",
+    post_str = "",
+):
+    first_line_com, mid_line_com, end_line_com, indent = (s.strip() for s in get_comment_format())
+
+    if pre_str:
+        text_width += len(pre_str)
+    if post_str:
+        text_width += len(post_str)
+
+    box_width = max(text_width + 2 * hpadding, min_box_width)
+
+    cpad = " " * comment_padding
+
+    b = box_types[box_type]  # 8 characters
+    missing_left = (box_width - text_width - 2 * hpadding) // 2
+    ipad_left = pad_char * (hpadding + missing_left)
+    missing_right = box_width - text_width - 2 * hpadding - missing_left
+    ipad_right = pad_char * (hpadding + missing_right)
+
+    top = f"{first_line_com}{cpad}{b[0]}{b[1] * (box_width)}{b[2]}{cpad}{end_line_com}"
+    middle_start = f"{mid_line_com}{cpad}{b[3]}{ipad_left}"
+    middle_end = f"{ipad_right}{b[4]}{cpad}{end_line_com}"
+    bottom = f"{first_line_com}{cpad}{b[5]}{b[6] * (box_width)}{b[7]}{cpad}{end_line_com}"
+
+    empty_line = f"{middle_start}{pad_char * text_width}{middle_end}"
+    for _ in range(vpadding):
+        top = f"{top}\n{empty_line}"
+        bottom = f"{empty_line}\n{bottom}"
+
+    middle_start = f"{middle_start}{pre_str}"
+    middle_end = f"{post_str}{middle_end}"
+
+    return top, middle_start, middle_end, bottom
+
+
+def put_in_box(text, **kwargs):
+    max_len = max(len(s) for s in text.split("\n"))
+    t, m1, m2, b = make_box(
+        max_len, **kwargs
+    )
+    padded_lines = [f"{s:<{max_len}}" for s in text.split("\n")]
+    mid = [f"{m1}{s}{m2}" for s in padded_lines]
+    return '\n'.join([t] + mid + [b])
+
+def foldmarker():
+    "Return a tuple of (open fold marker, close fold marker)"
+    return vim.eval("&foldmarker").split(",")
+
+
+endglobal
+
+snippet rbox "A slim rounded box" b
+`!p
+box = make_box(len(t[1]),vpadding=0, box_type="rounded")
+snip.rv = box[0]
+snip += box[1]
+`${1:${VISUAL:}}`!p
+snip.rv = box[2]
+snip += box[3]`
+$0
+endsnippet
+
+
+snippet box "A slim box" b
+`!p
+box = make_box(len(t[1]),vpadding=0, box_type="single")
+snip.rv = box[0]
+snip += box[1]
+`${1:${VISUAL:}}`!p
+snip.rv = box[2]
+snip += box[3]`
+$0
+endsnippet
+
+
+snippet dbox "A lean box with down arrow and min width" b
+`!p
+width=45
+box = make_box(len(t[1]), min_box_width=width, vpadding=0, pre_str="   ", post_str="   ")
+snip.rv = box[0]
+snip += box[1]
+`${1:${VISUAL:}}`!p
+snip.rv = box[2]
+lineb = make_box(0, min_box_width=width, vpadding=0, pad_char="─", box_type="bottomrounded", comment_padding=1, pre_str=" ⟱ ", post_str="")
+snip += lineb[1] + lineb[2]`
+$0
+endsnippet
+
+  
+
+snippet bbox "A padded box over the full width" b
+`!p
+width=70
+if not snip.c:
+	width = int(vim.eval("&textwidth - (virtcol('.') == 1 ? 0 : virtcol('.'))")) or 71
+box = make_box(len(t[1]), min_box_width=width, vpadding=1)
+snip.rv = box[0]
+snip += box[1]
+`${1:${VISUAL:}}`!p
+snip.rv = box[2]
+
+snip += box[3]`
+$0
+endsnippet
+
+
+snippet dbbox "A double border padded box over the full width" b
+`!p
+width=70
+if not snip.c:
+	width = int(vim.eval("&textwidth - (virtcol('.') == 1 ? 0 : virtcol('.'))")) or 71
+box = make_box(len(t[1]), min_box_width=width, vpadding=1, box_type="double")
+snip.rv = box[0]
+snip += box[1]
+`${1:${VISUAL:}}`!p
+snip.rv = box[2]
+snip += box[3]`
+$0
+endsnippet
+
+
+snippet line "line with centered text" b
+`!p
+width=70
+if not snip.c:
+	width = int(vim.eval("&textwidth - (virtcol('.') == 1 ? 0 : virtcol('.'))")) or 71
+box = make_box(len(t[1]), min_box_width=width, vpadding=0, pad_char="─", box_type="none", comment_padding=0, pre_str="   ", post_str="   ")
+snip.rv = box[1]
+`${1:${VISUAL:}}`!p
+snip.rv = box[2]`
+$0
+endsnippet
+
+snippet down "↓" w
+↓
+endsnippet
+
+snippet up "↑" w
+↑
+endsnippet
+
+snippet left "←" w
+←
+endsnippet
+
+snippet right "→" w
+→
+endsnippet
+
+snippet check "✓" w
+✓
+endsnippet
+
+snippet cross "✗" w
+✗
+endsnippet
+
+snippet star "★" w
+★
+endsnippet
+
+snippet bullet "•" w
+•
+endsnippet
+
+
+
+snippet fold "Insert a vim fold marker" b
+`!p snip.rv = get_comment_format()[0]` ${1:Fold description} `!p snip.rv = foldmarker()[0]`${2:1} `!p snip.rv = get_comment_format()[2]`
+endsnippet
+
+snippet foldc "Insert a vim fold close marker" b
+`!p snip.rv = get_comment_format()[0]` ${2:1}`!p snip.rv = foldmarker()[1]` `!p snip.rv = get_comment_format()[2]`
+endsnippet
+
+snippet foldp "Insert a vim fold marker pair" b
+`!p snip.rv = get_comment_format()[0]` ${1:Fold description} `!p snip.rv = foldmarker()[0]` `!p snip.rv = get_comment_format()[2]`
+${2:${VISUAL:Content}}
+`!p snip.rv = get_comment_format()[0]` `!p snip.rv = foldmarker()[1]` $1 `!p snip.rv = get_comment_format()[2]`
+endsnippet
+
+
+#########
+# DATES #
+#########
+snippet date "YYYY-MM-DD" w
+`!v strftime("%Y-%m-%d")`
+endsnippet
+
+snippet ddate "Month DD, YYYY" w
+`!v strftime("%b %d, %Y")`
+endsnippet
+
+snippet diso "ISO format datetime" w
+`!v strftime("%Y-%m-%d %H:%M:%S%z")`
+endsnippet
+
+snippet time "hh:mm" w
+`!v strftime("%H:%M")`
+endsnippet
+
+snippet datetime "YYYY-MM-DD hh:mm" w
+`!v strftime("%Y-%m-%d %H:%M")`
+endsnippet
+
