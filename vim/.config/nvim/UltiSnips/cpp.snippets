@@ -1,0 +1,26 @@
+priority 0
+snippet /*--- "Cpp block"
+`!p L = 79`
+/*`!p snip.rv = '-'*(L-2)`
+{{{`!p snip.rv = ' '*(int((L - len(t[1]))/2)-10)`--     $1     --
+`!p snip.rv = '·'*(L-2)`*/
+${VISUAL}$0
+/*`!p snip.rv = ' '*(L-5)`}}}
+`!p snip.rv = '-'*(L-2)`*/
+endsnippet
+
+snippet main
+int main(int argc, char** argv) {
+	${0}
+	return 0;
+}
+endsnippet
+
+snippet vector "std::vector (v)"
+std::vector<${1:char}> v$0;
+endsnippet
+
+snippet tp "template <typename ..> (template)"
+template <typename ${1:_InputIter}>
+endsnippet
+

@@ -1,0 +1,36 @@
+HOST_RIGHT_COLOR='#BBBBBB'
+SESS_COLOR='#BBBBBB'
+
+ACCENT_COLOR='colour93'
+ACCENT_COLOR_LIGHT_FG='colour234'
+NEUTRAL_BG_COLOR='colour234'
+
+
+IP_INFO="#(ip addr | grep -e 'state UP' -A 2 | awk '/inet /{printf $2}')"
+HOST_INFO="#[fg=colour235,bg=$HOST_RIGHT_COLOR]    #h⠀"
+
+
+set-option -g @ipinfo_format "#ip (#isp)"
+set -g status-justify "left"
+set -g status "on"
+set -g status-left-style "none"
+set -g message-command-style "fg=colour231,bg=$ACCENT_COLOR"
+set -g status-right-style "none"
+set -g pane-active-border-style "fg=colour254"
+set -g status-style "none,bg=$NEUTRAL_BG_COLOR"
+set -g message-style "fg=colour231,bg=$ACCENT_COLOR"
+set -g pane-border-style "fg=colour240"
+set -g status-right-length "200"
+set -g status-left-length "100"
+setw -g window-status-activity-style "none"
+setw -g window-status-separator ""
+setw -g window-status-style "none,fg=colour250,bg=$NEUTRAL_BG_COLOR"
+
+set -g status-left "#[fg=colour16,bg=$SESS_COLOR,bold] #S #[fg=$SESS_COLOR,bg=$NEUTRAL_BG_COLOR,nobold,nounderscore,noitalics]#{prefix_highlight}"
+
+set -g status-right " CPU: #{cpu_percentage} #{cpu_temp} RAM: #{ram_percentage} bat: #{battery_percentage} "\
+"#[fg=colour236,bg=$NEUTRAL_BG_COLOR,nobold,nounderscore,noitalics]#[fg=colour247,bg=colour236] %Y-%m-%d  %H:%M #[fg=colour252,bg=colour236,nobold,nounderscore,noitalics] $HOST_INFO"
+
+setw -g window-status-format "#[fg=colour244,bg=$WIN_LEFT_COLOR] #I #[fg=colour250,bg=$WIN_LEFT_COLOR] #W "
+setw -g window-status-current-format "#[fg=$NEUTRAL_BG_COLOR,bg=$ACCENT_COLOR,nobold,nounderscore,noitalics]#[fg=$ACCENT_COLOR_LIGHT_FG,bg=$WIN_LEFT_COLOR] #I #[fg=colour231,bg=$ACCENT_COLOR,bold] #W #[fg=$ACCENT_COLOR,bg=$NEUTRAL_BG_COLOR,nobold,nounderscore,noitalics]"
+

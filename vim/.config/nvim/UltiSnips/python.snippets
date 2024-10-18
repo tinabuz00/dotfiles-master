@@ -1,0 +1,21 @@
+snippet #### "Python comment block"
+`!p L = 79`
+
+## `!p snip.rv = '─'*int((L-5)/2) ` ▼ `!p snip.rv = '─'*int((L-5)/2) `
+# {{{`!p snip.rv = ' '*(int((L - len(t[1]))/2)-10)`--     $1     --
+#`!p snip.rv = '·'*(L)`
+${VISUAL}$0
+#`!p snip.rv = ' '*(L-3)`}}}
+## `!p snip.rv = '─'*(L-2)`
+
+
+endsnippet
+
+snippet ## "Minimal python comment block"
+`!p L = 79`
+## {{{`!p snip.rv = ' '*(int((L - len(t[1]))/2)-10)`--     $1     --
+${VISUAL}$0
+##`!p snip.rv = '─'*(L-3)`}}}
+endsnippet
+
+
